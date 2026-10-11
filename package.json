@@ -3,15 +3,16 @@
   "version": "1.0.0",
   "description": "",
   "main": "src/index.ts",
-     "scripts": {
-     "typecheck": "tsc --noEmit",
-     "test": "vitest run"
-   },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@rolldown/binding-wasm32-wasi": "^1.2.13",
     "@types/node": "^26.6.5",
     "rolldown": "^1.2.13",
