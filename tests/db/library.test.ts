@@ -43,4 +43,12 @@ describe("borrow_book", () => {
     expect(book.rows[0].copies_available).toBe(0); // Assert 2: stock unchanged
     expect(loans.rows).toHaveLength(0); // Assert 3: no loan written
   });
+    it("rejects an unknown book and writes no loan", async () => {
+    await expect(
+      db.query("select borrow_book($1, $2)", [999, "Samin"]), // Act: id 999 doesn't exist
+    ).rejects.toThrow("Book not found"); // Assert 1: right error
+
+    const loans = await db.query("select * from loan");
+    expect(loans.rows).toHaveLength(0); // Assert 2: nothing written
+  });
 });
