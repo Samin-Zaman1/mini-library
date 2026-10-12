@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mini Library - Sign in</title>
+    <style>
+      body { margin: 0; font-family: system-ui, sans-serif; background: #f1f5f9; color: #0f172a; }
+      main { max-width: 760px; margin: 0 auto; padding: 24px; }
+      h1 { color: #1e3a8a; }
+      .forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; }
+      form { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+      h2 { margin-top: 0; font-size: 1.1rem; }
+      label { display: block; font-weight: 600; margin: 12px 0 6px; }
+      input { width: 100%; padding: 10px; border: 1px solid #94a3b8; border-radius: 8px; font-size: 1rem; box-sizing: border-box; }
+      button { margin-top: 16px; cursor: pointer; border: 0; border-radius: 8px; padding: 10px 16px; font-size: .95rem; font-weight: 600; background: #1d4ed8; color: #fff; }
+      #message { min-height: 1.5em; font-weight: 600; }
+      #message.error { color: #991b1b; }
+      #message.success { color: #166534; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Mini Library</h1>
+      <p id="message" role="status"></p>
+
+      <div class="forms">
+        <form id="signin" aria-label="Sign in">
+          <h2>Sign in</h2>
+          <label for="signin-username">Username</label>
+          <input id="signin-username" type="text" autocomplete="off" />
+          <label for="signin-password">Password</label>
+          <input id="signin-password" type="password" autocomplete="off" />
+          <button type="submit">Sign in</button>
+        </form>
+
+        <form id="signup" aria-label="Sign up">
+          <h2>Create an account</h2>
+          <label for="signup-username">Username</label>
+          <input id="signup-username" type="text" autocomplete="off" />
+          <label for="signup-password">Password (6+ characters)</label>
+          <input id="signup-password" type="password" autocomplete="off" />
+          <button type="submit">Sign up</button>
+        </form>
+      </div>
+    </main>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+
+      function getUsers() {
+        return JSON.parse(localStorage.getItem("users") || "[]");
+      }
+      function saveUsers(users) {
+        localStorage.setItem("users", JSON.stringify(users));
+      }
+      function say(text, kind) {
+        $("message").textContent = text;
+        $("message").className = kind || "";
+      }
+
+      $("signin").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const username = $("signin-username").value.trim();
+        const password = $("signin-password").value;
+        const user = getUsers().find(
+          (u) => u.username === username && u.password === password,
+        );
+        if (!user) return say("Invalid username or password", "error");
+        localStorage.setItem(
+          "session",
+          JSON.stringify({ username: user.username, role: user.role }),
+        );
+        window.location.href = "/";
+      });
+
+      $("signup").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const username = $("signup-username").value.trim();
+        const password = $("signup-password").value;
+        const users = getUsers();
+        if (!username) return say("Username is required", "error");
+        if (password.length < 6) return say("Password must be at least 6 characters", "error");
+        if (users.some((u) => u.username === username)) return say("Username already taken", "error");
+        users.push({ username, password, role: "member" });
+        saveUsers(users);
+        $("signup").reset();
+        say("Account created. You can sign in now.", "success");
+      });
+    </script>
+  </body>
+</html>

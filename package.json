@@ -4,17 +4,20 @@
   "description": "",
   "main": "src/index.ts",
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
-  },
+  "typecheck": "tsc --noEmit",
+  "test": "vitest run",
+  "test:e2e": "playwright test"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "module",
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
+    "@playwright/test": "^1.64.0",
     "@rolldown/binding-wasm32-wasi": "^1.2.13",
     "@types/node": "^26.6.5",
+    "http-server": "^14.1.1",
     "rolldown": "^1.2.13",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"
