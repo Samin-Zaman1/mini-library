@@ -1,7 +1,7 @@
 {
   "name": "mini-library",
   "version": "1.0.0",
-  "description": "",
+  "description": "Library app tested at three levels: Vitest unit tests, PGlite database tests, Playwright E2E",
   "main": "src/index.ts",
   "scripts": {
   "typecheck": "tsc --noEmit",
@@ -9,8 +9,8 @@
   "test:e2e": "playwright test"
 },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "author": "Samin Zaman",
+  "license": "MIT",
   "type": "module",
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.8",
