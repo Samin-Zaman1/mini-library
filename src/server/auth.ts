@@ -35,7 +35,7 @@ function validCredentials(body: unknown): body is { username: string; password: 
     typeof username === "string" &&
     USERNAME.test(username) &&
     typeof password === "string" &&
-    password.length >= 8 &&
+    password.length >= 6 && // matches the "6+ characters" hint on the sign-up form
     Buffer.byteLength(password) <= 72 // bcrypt ignores bytes past 72
   );
 }
@@ -48,7 +48,7 @@ export const authRouter = Router();
 
 authRouter.post("/signup", async (req, res) => {
   if (!validCredentials(req.body)) {
-    res.status(400).json({ error: "Username must be 3-32 letters, digits, _ or -; password 8-72 characters" });
+    res.status(400).json({ error: "Username must be 3-32 letters, digits, _ or -; password 6-72 characters" });
     return;
   }
   const { username, password } = req.body;
@@ -104,7 +104,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const token: unknown = req.cookies?.[COOKIE];
   if (typeof token === "string") {
     try {
-      const { id, username, role } = jwt.verify(token, secret) as SessionUser;
+      const { id, username, role } = jwt.verify(token, secret, { algorithms: ["HS256"] }) as SessionUser;
       req.user = { id, username, role };
       return next();
     } catch {

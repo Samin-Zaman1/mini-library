@@ -364,8 +364,8 @@ components:
           pattern: "^[a-zA-Z0-9_-]{3,32}$"
         password:
           type: string
-          minLength: 8
-          description: At least 8 characters and at most 72 bytes (UTF-8).
+          minLength: 6
+          description: At least 6 characters and at most 72 bytes (UTF-8).
 
     LoginRequest:
       type: object
