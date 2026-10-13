@@ -1,0 +1,485 @@
+openapi: 3.1.0
+info:
+  title: Mini Library API
+  version: 1.0.0
+  description: |
+    JSON API served by `src/server`. Sessions are a signed JWT in the httpOnly
+    `session` cookie set by `POST /api/auth/login` (valid for 1 hour).
+
+    **Cross-origin guard:** every POST/PUT/PATCH/DELETE whose `Origin` header is
+    present and does not match the `Host` header is rejected with `403` before
+    authentication or validation runs.
+
+    **Check order** on protected routes: cross-origin guard (403), then session
+    (401), then role (403), then request validation (400).
+
+    Malformed JSON bodies are rejected with `400` by Express's body parser; that
+    response is Express's default error page, not the `Error` schema.
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: http://localhost:3000
+
+tags:
+  - name: health
+    description: Liveness check
+  - name: auth
+    description: Accounts and sessions
+  - name: books
+    description: Catalogue
+  - name: loans
+    description: Borrowing and returns
+
+paths:
+  /api/health:
+    get:
+      tags: [health]
+      summary: Liveness check
+      operationId: getHealth
+      security: []
+      responses:
+        "200":
+          description: Server is up
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status:
+                    type: string
+                    const: ok
+
+  /api/auth/signup:
+    post:
+      tags: [auth]
+      summary: Create a member account
+      description: The new account's role is always `member`; a `role` field in the body is ignored.
+      operationId: signup
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignupRequest"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "403":
+          $ref: "#/components/responses/CrossOrigin"
+        "409":
+          description: Username already taken
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Username already taken
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Sign in and receive a session cookie
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Signed in
+          headers:
+            Set-Cookie:
+              description: "`session=<JWT>; Max-Age=3600; Path=/; HttpOnly; SameSite=Lax` (plus `Secure` in production)"
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Unknown username, wrong password, or missing fields. No cookie is set.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Invalid username or password
+        "403":
+          $ref: "#/components/responses/CrossOrigin"
+
+  /api/auth/logout:
+    post:
+      tags: [auth]
+      summary: Clear the session cookie
+      description: |
+        Does not require a session. The cookie is cleared, but the JWT itself stays
+        valid until it expires; there is no server-side revocation.
+      operationId: logout
+      security: []
+      responses:
+        "204":
+          description: Cookie cleared
+          headers:
+            Set-Cookie:
+              description: Expires the `session` cookie
+              schema:
+                type: string
+        "403":
+          $ref: "#/components/responses/CrossOrigin"
+
+  /api/auth/me:
+    get:
+      tags: [auth]
+      summary: The signed-in user
+      operationId: getMe
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Current user (taken from the session token)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/books:
+    get:
+      tags: [books]
+      summary: List all books
+      operationId: listBooks
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Books ordered by id
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Book"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [books]
+      summary: Add a book (librarian only)
+      operationId: createBook
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookRequest"
+      responses:
+        "201":
+          description: Book created. `title` and `author` are stored trimmed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Book"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenRoleOrOrigin"
+
+  /api/loans:
+    get:
+      tags: [loans]
+      summary: List loans
+      description: Members see only their own loans; librarians see every loan. Ordered by id.
+      operationId: listLoans
+      security:
+        - sessionCookie: []
+      responses:
+        "200":
+          description: Loans visible to the caller
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Loan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+    post:
+      tags: [loans]
+      summary: Borrow a book (member only)
+      description: |
+        The loan is recorded for the signed-in user. Any member name in the body is
+        ignored. Takes one copy and sets `due_date` to 14 days from now.
+      operationId: borrowBook
+      security:
+        - sessionCookie: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BorrowRequest"
+      responses:
+        "201":
+          description: Loan created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/ForbiddenRoleOrOrigin"
+        "404":
+          description: Book does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Book not found
+        "409":
+          description: No copies left
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: No copies available
+
+  /api/loans/{id}/return:
+    post:
+      tags: [loans]
+      summary: Return a borrowed book
+      description: |
+        Members may return only their own loans; librarians may return any loan.
+        Sets `returned_at` and gives the copy back. If the return is after
+        `due_date`, `fine_amount` is set to `calculateFine(days late)`, where any
+        part of a day counts as a full day, at 5 per day.
+      operationId: returnLoan
+      security:
+        - sessionCookie: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Loan id. A non-integer id returns `404`.
+          schema:
+            type: integer
+            minimum: 1
+      responses:
+        "200":
+          description: Loan after the return
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Loan"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          description: The loan belongs to another member, or cross-origin request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              examples:
+                notOwner:
+                  value:
+                    error: You can only return your own loans
+                crossOrigin:
+                  value:
+                    error: Cross-origin request rejected
+        "404":
+          description: Loan does not exist
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Loan not found
+        "409":
+          description: Loan was already returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+              example:
+                error: Already returned
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: session
+      description: Signed JWT set by `POST /api/auth/login`.
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    Role:
+      type: string
+      enum: [member, librarian]
+
+    User:
+      type: object
+      required: [id, username, role]
+      properties:
+        id:
+          type: integer
+        username:
+          type: string
+        role:
+          $ref: "#/components/schemas/Role"
+
+    SignupRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+          pattern: "^[a-zA-Z0-9_-]{3,32}$"
+        password:
+          type: string
+          minLength: 8
+          description: At least 8 characters and at most 72 bytes (UTF-8).
+
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+
+    Book:
+      type: object
+      required: [id, title, author, copies_available]
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        author:
+          type: [string, "null"]
+          description: "`null` for books added without an author (before migration 003)."
+        copies_available:
+          type: integer
+          minimum: 0
+
+    CreateBookRequest:
+      type: object
+      required: [title, author, copies]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Must not be blank after trimming.
+        author:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Must not be blank after trimming.
+        copies:
+          type: integer
+          minimum: 0
+
+    BorrowRequest:
+      type: object
+      required: [bookId]
+      properties:
+        bookId:
+          type: integer
+          minimum: 1
+          description: Must be a JSON number; a numeric string is rejected with 400.
+
+    Loan:
+      type: object
+      required: [id, book_id, title, member, borrowed_at, due_date, returned_at, fine_amount]
+      properties:
+        id:
+          type: integer
+        book_id:
+          type: integer
+        title:
+          type: string
+          description: Title of the borrowed book.
+        member:
+          type: string
+          description: Username of the borrower.
+        borrowed_at:
+          type: string
+          format: date-time
+        due_date:
+          type: string
+          format: date-time
+        returned_at:
+          type: [string, "null"]
+          format: date-time
+          description: "`null` while the book is still out."
+        fine_amount:
+          type: number
+          minimum: 0
+          description: 0 unless the book was returned after `due_date`.
+
+  responses:
+    BadRequest:
+      description: Request body failed validation
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    Unauthorized:
+      description: No session cookie, or the token is invalid or expired
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Not signed in
+    CrossOrigin:
+      description: "`Origin` header present and does not match the host"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          example:
+            error: Cross-origin request rejected
+    ForbiddenRoleOrOrigin:
+      description: The caller's role is not allowed, or cross-origin request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+          examples:
+            wrongRole:
+              value:
+                error: Forbidden
+            crossOrigin:
+              value:
+                error: Cross-origin request rejected

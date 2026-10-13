@@ -4,22 +4,36 @@
   "description": "Library app tested at three levels: Vitest unit tests, PGlite database tests, Playwright E2E",
   "main": "src/index.ts",
   "scripts": {
-  "typecheck": "tsc --noEmit",
-  "test": "vitest run",
-  "test:e2e": "playwright test"
-},
+    "dev": "tsx watch src/server/index.ts",
+    "seed": "tsx src/server/seed.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
   "keywords": [],
   "author": "Samin Zaman",
   "license": "MIT",
   "type": "module",
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.8",
     "@playwright/test": "^1.64.0",
     "@rolldown/binding-wasm32-wasi": "^1.2.13",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.6.5",
+    "@types/supertest": "^7.2.1",
     "http-server": "^14.1.1",
     "rolldown": "^1.2.13",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.9",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3"
   }
 }

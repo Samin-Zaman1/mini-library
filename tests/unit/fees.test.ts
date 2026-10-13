@@ -13,4 +13,12 @@
      it("rejects negative days", () => {
        expect(() => calculateFine(-1)).toThrow("cannot be negative");
      });
+
+     it("returns 0 when the book is returned on time", () => {
+       expect(calculateFine(0)).toBe(0);
+     });
+
+     it("uses a custom rate per day", () => {
+       expect(calculateFine(2, 10)).toBe(20);
+     });
    });
