@@ -85,10 +85,18 @@
     <footer>Mini Library practice app</footer>
 
     <script>
-              const session = JSON.parse(localStorage.getItem("session") || "null");
-      if (!session) {
-        window.location.href = "/login.html";
-      }
+      // The session lives in an httpOnly cookie, so ask the server who is signed in.
+      fetch("/api/auth/me")
+        .then((res) => {
+          if (!res.ok) throw new Error("Not signed in");
+          return res.json();
+        })
+        .then((user) => {
+          $("current-user").textContent = user.username;
+        })
+        .catch(() => {
+          window.location.href = "/login.html";
+        });
       const books = [
         { id: 1, title: "Clean Code", copies: 2 },
         { id: 2, title: "Refactoring", copies: 1 },
@@ -110,11 +118,8 @@
         if (copies === 1) return '<span class="badge warn">1 copy left</span>';
         return '<span class="badge ok">' + copies + " copies available</span>";
       }
-        if (session) {
-        $("current-user").textContent = session.username;
-      }
-      $("signout").addEventListener("click", () => {
-        localStorage.removeItem("session");
+      $("signout").addEventListener("click", async () => {
+        await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
         window.location.href = "/login.html";
       });
       function render() {

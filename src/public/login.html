@@ -48,44 +48,48 @@
     <script>
       const $ = (id) => document.getElementById(id);
 
-      function getUsers() {
-        return JSON.parse(localStorage.getItem("users") || "[]");
-      }
-      function saveUsers(users) {
-        localStorage.setItem("users", JSON.stringify(users));
-      }
       function say(text, kind) {
         $("message").textContent = text;
         $("message").className = kind || "";
       }
 
-      $("signin").addEventListener("submit", (e) => {
+      // POST JSON to the API; returns { ok, status, body } or throws if the server is unreachable.
+      async function post(path, data) {
+        const res = await fetch(path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data),
+        });
+        const body = await res.json().catch(() => ({}));
+        return { ok: res.ok, status: res.status, body };
+      }
+
+      $("signin").addEventListener("submit", async (e) => {
         e.preventDefault();
         const username = $("signin-username").value.trim();
         const password = $("signin-password").value;
-        const user = getUsers().find(
-          (u) => u.username === username && u.password === password,
-        );
-        if (!user) return say("Invalid username or password", "error");
-        localStorage.setItem(
-          "session",
-          JSON.stringify({ username: user.username, role: user.role }),
-        );
-        window.location.href = "/";
+        try {
+          const res = await post("/api/auth/login", { username, password });
+          if (!res.ok) return say(res.body.error || "Invalid username or password", "error");
+          window.location.href = "/index.html";
+        } catch {
+          say("Could not reach the server", "error");
+        }
       });
 
-      $("signup").addEventListener("submit", (e) => {
+      $("signup").addEventListener("submit", async (e) => {
         e.preventDefault();
         const username = $("signup-username").value.trim();
         const password = $("signup-password").value;
-        const users = getUsers();
         if (!username) return say("Username is required", "error");
-        if (password.length < 6) return say("Password must be at least 6 characters", "error");
-        if (users.some((u) => u.username === username)) return say("Username already taken", "error");
-        users.push({ username, password, role: "member" });
-        saveUsers(users);
-        $("signup").reset();
-        say("Account created. You can sign in now.", "success");
+        try {
+          const res = await post("/api/auth/signup", { username, password });
+          if (!res.ok) return say(res.body.error || "Sign up failed", "error");
+          $("signup").reset();
+          say("Account created. You can sign in now.", "success");
+        } catch {
+          say("Could not reach the server", "error");
+        }
       });
     </script>
   </body>
